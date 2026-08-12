@@ -84,7 +84,7 @@ class Retriever:
         self.index = faiss.IndexFlatIP(dim)
         self.index.add(embeddings.astype(np.float32))
 
-    def search(self, query, top_k=3):
+    def search(self, query, top_k=5):
         query_vec = self.model.encode([query], normalize_embeddings=True)
         scores, indices = self.index.search(query_vec.astype(np.float32), top_k)
         return [
