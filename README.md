@@ -29,7 +29,7 @@ User Query
     v
 [Generator]
     |  System prompt enforces grounded answers with citations
-    |  Gemini Flash generates the response
+    |  Gemini 3.5 Flash generates the response
     |  Token usage and cost logged per query
     v
 [Response]
@@ -42,7 +42,7 @@ User Query
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| LLM | Gemini Flash (free tier) | Production-grade model, generous free quota |
+| LLM | Gemini 3.5 Flash (free tier) | Production-grade model, generous free quota |
 | Embeddings | sentence-transformers all-MiniLM-L6-v2 | Local, free, no API dependency for the vector layer |
 | Vector Store | FAISS (IndexFlatIP) | Zero infrastructure, exact search for small KBs |
 | Frontend | Streamlit | Rapid prototyping with built-in chat and tabs |
@@ -79,7 +79,7 @@ rag-demo/
 
 Total infrastructure cost: **$0**. Gemini free tier, local embeddings, self-hosted Docker on existing hardware.
 
-The cost dashboard simulates production pricing ($0.10/1M input, $0.40/1M output) to demonstrate cost awareness at scale.
+The cost dashboard simulates production pricing ($0.30/1M input, $2.50/1M output) to demonstrate cost awareness at scale.
 
 ## License
 
