@@ -1,21 +1,55 @@
 import os
+import secrets
 
 import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")
+DEMO_TOKEN = os.environ.get("DEMO_TOKEN", "")
+VALID_TOKENS = {ACCESS_TOKEN, DEMO_TOKEN}
+
+
+#token auth via URL param or session
+query_params = st.query_params
+url_token = query_params.get("token", "")
+session_token = st.session_state.get("auth_token", "")
+
+if url_token and url_token in VALID_TOKENS:
+    st.session_state.auth_token = url_token
+    session_token = url_token
+
+if not session_token or session_token not in VALID_TOKENS:
+    st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀")
+    st.markdown("## 🔒 Authentication Required")
+    st.markdown("This demo is token-protected.")
+    st.text_input("Enter access token:", key="token_input")
+    if st.button("Unlock"):
+        typed = st.session_state.get("token_input", "")
+        if typed in VALID_TOKENS:
+            st.session_state.auth_token = typed
+            st.rerun()
+        else:
+            st.error("Invalid token.")
+    st.stop()
+
+is_demo_mode = session_token == DEMO_TOKEN
+
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     st.error("Set GEMINI_API_KEY in .env or environment. See .env.example.")
     st.stop()
 
-from generator import Generator, get_usage_log
+from generator import Generator, get_usage_log, UsageLog
 from retriever import Retriever
 
 st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀", layout="wide")
 st.title("🚀 DeployHub Support Bot")
 st.caption("RAG-powered support assistant | Gemini 2.0 Flash + sentence-transformers + FAISS")
+
+if is_demo_mode:
+    st.info("🎬 Demo Mode: Cost dashboard pre-populated with sample data.")
 
 @st.cache_resource
 def get_retriever():
@@ -25,6 +59,26 @@ def get_retriever():
 @st.cache_resource
 def get_generator():
     return Generator()
+
+
+def seed_demo_data():
+    from generator import _usage_log
+    from datetime import datetime, timezone
+    if not _usage_log:
+        sample = [
+            ("How much does Pro cost?", "$29/month for the Pro plan [pricing.md].", 487, 42, ["pricing.md"]),
+            ("What ports does the app use?", "DeployHub exposes port 8080 by default [troubleshooting.md].", 512, 38, ["troubleshooting.md"]),
+            ("How is data encrypted?", "AES-256 at rest, TLS 1.3 in transit [security.md].", 503, 55, ["security.md"]),
+            ("What are the API rate limits?", "Free: 50/min, Pro: 200/min, Team: 500/min [api.md].", 498, 61, ["api.md"]),
+            ("How do I add a custom domain?", "Add it in Project Settings > Domains [deployment.md].", 467, 47, ["deployment.md"]),
+        ]
+        for q, a, pt, ct, srcs in sample:
+            _usage_log.append(UsageLog(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                query=q, answer=a, prompt_tokens=pt, completion_tokens=ct,
+                cost=pt * 0.10 / 1e6 + ct * 0.40 / 1e6,
+                sources=srcs,
+            ))
 
 
 #chat history survives reruns
@@ -111,6 +165,9 @@ with tab_cost:
         "Gemini 2.0 Flash free tier is $0. Costs shown use production pricing "
         "($0.10/1M input, $0.40/1M output) for demonstration."
     )
+
+    if is_demo_mode:
+        seed_demo_data()
 
     log = get_usage_log()
     if not log:
