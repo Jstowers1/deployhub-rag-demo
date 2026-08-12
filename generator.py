@@ -7,8 +7,8 @@ from google.genai import types
 
 MODEL_NAME = "gemini-3.5-flash"
 #simulated production pricing; free tier is $0
-INPUT_COST_PER_1M = 0.10
-OUTPUT_COST_PER_1M = 0.40
+INPUT_COST_PER_1M = 0.30
+OUTPUT_COST_PER_1M = 2.50
 
 SYSTEM_PROMPT = """\
 You are a helpful support assistant for DeployHub, \
