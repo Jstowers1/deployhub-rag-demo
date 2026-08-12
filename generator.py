@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from google import genai
 from google.genai import types
 
-MODEL_NAME = "gemini-flash-latest"
+MODEL_NAME = "gemini-3.5-flash"
 #simulated production pricing; free tier is $0
 INPUT_COST_PER_1M = 0.10
 OUTPUT_COST_PER_1M = 0.40
