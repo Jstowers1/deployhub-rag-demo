@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 MODEL_NAME = "gemini-2.0-flash"
-# simulated cost per 1M tokens; real free-tier is $0
+#simulated production pricing; free tier is $0
 INPUT_COST_PER_1M = 0.10
 OUTPUT_COST_PER_1M = 0.40
 
@@ -50,11 +50,13 @@ def clear_usage_log():
     _usage_log.clear()
 
 
-@dataclass
 class Generator:
-    model_name: str = MODEL_NAME
+    def __init__(self, model_name=MODEL_NAME):
+        self.client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        self.model_name = model_name
 
-    def _build_context(self, search_results):
+    @staticmethod
+    def _build_context(search_results):
         parts = []
         sources = []
         for result in search_results:
@@ -66,17 +68,25 @@ class Generator:
         return "\n\n---\n\n".join(parts), sources
 
     def generate(self, query, search_results):
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
         context, sources = self._build_context(search_results)
         prompt = f"Context from the knowledge base:\n{context}\n\nQuestion: {query}"
 
-        response = client.models.generate_content(
-            model=self.model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-            ),
-        )
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                ),
+            )
+        except Exception as e:
+            return GenerationResult(
+                answer=f"Error generating response. Please try again.",
+                prompt_tokens=0,
+                completion_tokens=0,
+                cost=0.0,
+                sources=sources,
+            )
 
         usage = response.usage_metadata
         prompt_tokens = (usage.prompt_token_count if usage else None) or 0
@@ -111,13 +121,13 @@ class Generator:
 
 
 if __name__ == "__main__":
+    #test context building without API key
     from retriever import Chunk, SearchResult
 
-    g = Generator()
     fake_results = [
         SearchResult(Chunk("Pro plan costs $29/month.", "pricing.md", "Pricing"), 0.9)
     ]
-    context, sources = g._build_context(fake_results)
+    context, sources = Generator._build_context(fake_results)
     assert "$29" in context, "context should contain chunk text"
     assert sources == ["pricing.md"], f"expected ['pricing.md'], got {sources}"
     print("self-check passed")

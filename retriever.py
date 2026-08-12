@@ -1,6 +1,6 @@
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import faiss
 import numpy as np
@@ -8,15 +8,14 @@ from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-CHUNK_SIZE = 500  # chars; split on paragraph boundaries
-CHUNK_OVERLAP = 50
+CHUNK_SIZE = 500
 
 
 @dataclass
 class Chunk:
     text: str
-    source: str  # filename
-    heading: str  # nearest markdown heading
+    source: str
+    heading: str
 
 
 @dataclass
@@ -37,19 +36,19 @@ def load_documents(data_dir=DATA_DIR):
 
 
 def chunk_document(text, source):
-    # split into sections by markdown headings
+    #split by markdown headings
     sections = re.split(r"^(#{1,3}\s+.+)$", text, flags=re.MULTILINE)
     chunks = []
     current_heading = source
 
-    for i, section in enumerate(sections):
+    for section in sections:
         section = section.strip()
         if not section:
             continue
         if re.match(r"^#{1,3}\s+", section):
             current_heading = section.lstrip("#").strip()
             continue
-        # split long sections by double newline (paragraphs)
+        #split long sections by paragraph
         paragraphs = section.split("\n\n")
         buf = ""
         for para in paragraphs:
@@ -96,7 +95,6 @@ class Retriever:
 
 
 if __name__ == "__main__":
-    # self-check: index loads, search returns results
     r = Retriever()
     results = r.search("how much does the pro plan cost?")
     assert len(results) > 0, "no results returned"

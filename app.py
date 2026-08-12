@@ -1,12 +1,10 @@
 import os
-import sys
 
 import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# check API key before anything imports heavy modules
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     st.error("Set GEMINI_API_KEY in .env or environment. See .env.example.")
@@ -19,7 +17,6 @@ st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀", layout=
 st.title("🚀 DeployHub Support Bot")
 st.caption("RAG-powered support assistant | Gemini 2.0 Flash + sentence-transformers + FAISS")
 
-# cache heavy objects across reruns
 @st.cache_resource
 def get_retriever():
     return Retriever()
@@ -30,14 +27,14 @@ def get_generator():
     return Generator()
 
 
-# init chat history
+#chat history survives reruns
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 tab_chat, tab_eval, tab_cost = st.tabs(["💬 Chat", "📊 Evaluation", "💰 Cost Dashboard"])
 
 
-# --- Chat tab ---
+#Chat tab
 with tab_chat:
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -73,7 +70,7 @@ with tab_chat:
             )
 
 
-# --- Evaluation tab ---
+#Evaluation tab
 with tab_eval:
     st.header("Evaluation Suite")
     st.markdown(
@@ -106,7 +103,7 @@ with tab_eval:
                         st.error(d)
 
 
-# --- Cost dashboard ---
+#Cost dashboard
 with tab_cost:
     st.header("Cost Dashboard")
     st.markdown("Tracks token usage and simulated cost per query.")

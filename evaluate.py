@@ -9,8 +9,8 @@ from retriever import Retriever
 class TestCase:
     id: str
     query: str
-    must_contain: list[str]  # factual keywords expected in answer
-    must_not_contain: list[str]  # forbidden terms (hallucination check)
+    must_contain: list[str]  #factual keywords expected in answer
+    must_not_contain: list[str]  #forbidden terms for hallucination check
     expected_source: str
     description: str
 
@@ -107,12 +107,12 @@ def run_tests():
         answer_lower = gen_result.answer.lower()
         details = []
 
-        # check 1: factual keyword match
+        #check 1: factual keyword match
         keyword_pass = any(kw.lower() in answer_lower for kw in tc.must_contain)
         if not keyword_pass:
             details.append(f"MISSING keyword: expected one of {tc.must_contain}")
 
-        # check 2: correct source retrieved
+        #check 2: correct source retrieved
         source_pass = True
         if tc.expected_source:
             source_pass = tc.expected_source in gen_result.sources
@@ -122,7 +122,7 @@ def run_tests():
                     f"got {gen_result.sources}"
                 )
 
-        # check 3: no hallucinated forbidden terms
+        #check 3: no hallucinated forbidden terms
         hallucination_pass = True
         for forbidden in tc.must_not_contain:
             if forbidden.lower() in answer_lower:
