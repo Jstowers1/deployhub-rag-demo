@@ -1,24 +1,21 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# Gemini 2.0 Flash free tier pricing
-# Free tier does not cost money; these rates are for cost simulation
 MODEL_NAME = "gemini-2.0-flash"
-# ponytail: simulated cost per 1M tokens; real free-tier is $0
+# simulated cost per 1M tokens; real free-tier is $0
 INPUT_COST_PER_1M = 0.10
 OUTPUT_COST_PER_1M = 0.40
 
-SYSTEM_PROMPT = """You are a helpful support assistant for DeployHub, \
+SYSTEM_PROMPT = """\
+You are a helpful support assistant for DeployHub, \
 a cloud deployment platform. Answer questions using only the context \
 provided below. If the context does not contain the answer, say you \
 are not sure and suggest contacting support. Cite the source filename \
 in square brackets like [pricing.md] at the end of relevant sentences.
-
-Context from the knowledge base:
-{context}
 """
 
 
@@ -42,7 +39,6 @@ class UsageLog:
     sources: list[str]
 
 
-# in-memory usage log; streamlit reruns make persistence overkill for a demo
 _usage_log: list[UsageLog] = []
 
 
@@ -70,27 +66,28 @@ class Generator:
         return "\n\n---\n\n".join(parts), sources
 
     def generate(self, query, search_results):
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        model = genai.GenerativeModel(MODEL_NAME)
-
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
         context, sources = self._build_context(search_results)
-        prompt = SYSTEM_PROMPT.format(context=context) + f"\n\nQuestion: {query}"
+        prompt = f"Context from the knowledge base:\n{context}\n\nQuestion: {query}"
 
-        response = model.generate_content(prompt)
-
-        # token counts from response metadata
-        usage = response.usage_metadata
-        prompt_tokens = usage.prompt_token_count if usage else 0
-        completion_tokens = (
-            usage.candidates_token_count if usage else 0
+        response = client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+            ),
         )
+
+        usage = response.usage_metadata
+        prompt_tokens = (usage.prompt_token_count if usage else None) or 0
+        completion_tokens = (usage.candidates_token_count if usage else None) or 0
 
         cost = (
             prompt_tokens * INPUT_COST_PER_1M / 1_000_000
             + completion_tokens * OUTPUT_COST_PER_1M / 1_000_000
         )
 
-        answer = response.text
+        answer = response.text or ""
 
         _usage_log.append(
             UsageLog(
@@ -114,7 +111,6 @@ class Generator:
 
 
 if __name__ == "__main__":
-    # self-check: context building works without API key
     from retriever import Chunk, SearchResult
 
     g = Generator()
