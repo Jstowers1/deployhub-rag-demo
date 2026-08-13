@@ -1,5 +1,5 @@
 import os
-import secrets
+import re
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -9,7 +9,6 @@ load_dotenv()
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")
 DEMO_TOKEN = os.environ.get("DEMO_TOKEN", "")
 VALID_TOKENS = {ACCESS_TOKEN, DEMO_TOKEN}
-
 
 #token auth via URL param or session
 query_params = st.query_params
@@ -42,14 +41,11 @@ if not api_key:
     st.stop()
 
 from generator import Generator, get_usage_log, UsageLog
-from retriever import Retriever
+from retriever import Retriever, load_documents
 
 st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀", layout="wide")
 st.title("🚀 DeployHub Support Bot")
-st.caption("RAG-powered support assistant | Gemini 2.0 Flash + sentence-transformers + FAISS")
 
-if is_demo_mode:
-    st.info("🎬 Demo Mode: Cost dashboard pre-populated with sample data.")
 
 @st.cache_resource
 def get_retriever():
@@ -59,6 +55,18 @@ def get_retriever():
 @st.cache_resource
 def get_generator():
     return Generator()
+
+
+@st.cache_data
+def get_kb_summary():
+    """Return knowledge base sources with their section headings."""
+    docs = load_documents()
+    summaries = []
+    for fname, text in docs:
+        title = fname.replace(".md", "").replace("_", " ").title()
+        headings = re.findall(r"^#{1,2}\s+(.+)$", text, re.MULTILINE)
+        summaries.append({"file": fname, "title": title, "headings": headings})
+    return summaries
 
 
 def seed_demo_data():
@@ -85,18 +93,76 @@ def seed_demo_data():
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-tab_chat, tab_eval, tab_cost = st.tabs(["💬 Chat", "📊 Evaluation", "💰 Cost Dashboard"])
+EXAMPLE_QUERIES = [
+    ("💰", "How much does the Pro plan cost?"),
+    ("🚀", "How do I deploy my first app?"),
+    ("🔒", "How is my data encrypted?"),
+    ("🐛", "My app returns 502 Bad Gateway, what should I do?"),
+    ("🔑", "What are the API rate limits?"),
+    ("🌐", "How do I add a custom domain?"),
+]
+
+tab_home, tab_chat, tab_debug = st.tabs(["🏠 Overview", "💬 Chat", "🔧 Debug"])
+
+
+#Overview landing tab
+with tab_home:
+    st.markdown(
+        "Ask questions about DeployHub, a cloud deployment platform. "
+        "Every answer is grounded in official documentation with source citations."
+    )
+
+    st.markdown("### What can I help with?")
+    for icon, q in EXAMPLE_QUERIES:
+        st.markdown(f"- {icon} {q}")
+
+    st.markdown("---")
+    st.markdown("### Knowledge Base")
+    st.markdown("The bot pulls answers from these documents:")
+
+    kb = get_kb_summary()
+    cols = st.columns(len(kb))
+    for col, entry in zip(cols, kb):
+        with col:
+            st.markdown(f"**{entry['title']}**")
+            st.caption(f"`{entry['file']}`")
+            for h in entry["headings"]:
+                st.markdown(f"- {h}")
+
+    st.markdown("")
+    st.info("👆 Click the **Chat** tab to start asking questions.")
 
 
 #Chat tab
 with tab_chat:
+    #input + clear button pinned to top
+    bar = st.columns([1, 6])
+    with bar[0]:
+        if st.button("🔄 New Chat", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+    with bar[1]:
+        st.text_input(
+            "Ask a question",
+            placeholder="Ask about pricing, deployment, troubleshooting, security, API...",
+            label_visibility="collapsed",
+            key="chat_box",
+        )
+
+    st.divider()
+
+    #message history
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("sources"):
                 st.caption(f"Sources: {', '.join(msg['sources'])}")
 
-    if prompt := st.chat_input("Ask about pricing, deployment, troubleshooting..."):
+    #process new prompt
+    if st.session_state.get("chat_box"):
+        prompt = st.session_state.chat_box
+        st.session_state.chat_box = ""
+
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -111,22 +177,40 @@ with tab_chat:
                 st.caption(f"Sources: {', '.join(gen_result.sources)}")
                 with st.expander("Retrieved chunks"):
                     for r in results:
-                        st.markdown(f"**{r.chunk.source} > {r.chunk.heading}** "
-                                    f"(score: {r.score:.3f})")
+                        st.markdown(
+                            f"**{r.chunk.source} > {r.chunk.heading}** "
+                            f"(score: {r.score:.3f})"
+                        )
                         st.text(r.chunk.text[:300])
 
-            st.session_state.messages.append(
-                {
-                    "role": "assistant",
-                    "content": gen_result.answer,
-                    "sources": gen_result.sources,
-                }
-            )
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": gen_result.answer,
+                "sources": gen_result.sources,
+            }
+        )
+        st.rerun()
 
 
-#Evaluation tab
-with tab_eval:
-    st.header("Evaluation Suite")
+#Debug tab
+with tab_debug:
+    st.warning(
+        "⚠️ These are development and debugging tools. "
+        "They are not part of the normal user experience."
+    )
+
+    if is_demo_mode:
+        st.info("🎬 Demo Mode: Cost dashboard pre-populated with sample data.")
+
+    st.caption(
+        "Backend: Gemini 2.0 Flash + sentence-transformers (all-MiniLM-L6-v2) + FAISS"
+    )
+
+    st.markdown("---")
+
+    #Evaluation
+    st.markdown("### 📊 Evaluation Suite")
     st.markdown(
         "8 test cases checked on 3 rubric dimensions: "
         "**keyword match**, **source retrieval**, **hallucination guard**."
@@ -156,10 +240,10 @@ with tab_eval:
                     for d in r.details:
                         st.error(d)
 
+    st.markdown("---")
 
-#Cost dashboard
-with tab_cost:
-    st.header("Cost Dashboard")
+    #Cost dashboard
+    st.markdown("### 💰 Cost Dashboard")
     st.markdown("Tracks token usage and simulated cost per query.")
     st.caption(
         "Gemini 2.0 Flash free tier is $0. Costs shown use production pricing "

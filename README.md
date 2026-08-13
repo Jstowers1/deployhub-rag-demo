@@ -9,13 +9,13 @@ RAG-powered support bot for a fictional SaaS platform. Ask questions about prici
 ## How To Use
 
 1. Open the **[Live Demo](https://demo.jstowers1.dev/?token=oAOy7Ub5UD0oLfxH_YkDpFIkQywA8QNEfthDErWPWKQ)** link.
-2. Go to the **Chat** tab. Ask things like:
+2. The **Overview** tab loads first. It shows what the bot can help with and lists the knowledge base documents it answers from.
+3. Click **Chat** to ask questions. The input box and **New Chat** button are at the top. Ask things like:
    - "How much does the Pro plan cost?"
    - "My app returns 502 Bad Gateway, what should I do?"
    - "How is my data encrypted?"
    - "Can DeployHub mine cryptocurrency?" (out-of-scope test)
-3. Go to the **Evaluation** tab. Click **Run Evaluation Suite** to see 8 test cases pass or fail against three rubric dimensions.
-4. Go to the **Cost Dashboard** tab. See per-query token usage and simulated production cost. Use the **Demo Mode** link above to see it pre-populated with sample data.
+4. The **Debug** tab contains the evaluation suite and cost dashboard. These are development tools, not part of the normal user experience.
 
 ## Pipeline
 
@@ -66,7 +66,7 @@ Includes an out-of-scope test ("Can DeployHub mine cryptocurrency?") to verify t
 
 ```
 rag-demo/
-  app.py             Streamlit frontend, token auth, demo mode
+  app.py             Streamlit frontend: Overview, Chat, Debug tabs
   retriever.py       Document loading, chunking, FAISS index, search
   generator.py       Gemini API client, context building, cost tracking
   evaluate.py        8 test cases, 3-dimension rubric, pass/fail matrix
