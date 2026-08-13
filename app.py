@@ -20,8 +20,8 @@ if url_token and url_token in VALID_TOKENS:
     session_token = url_token
 
 if not session_token or session_token not in VALID_TOKENS:
-    st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀")
-    st.markdown("## 🔒 Authentication Required")
+    st.set_page_config(page_title="DeployHub Support Bot")
+    st.markdown("## Authentication Required")
     st.markdown("This demo is token-protected.")
     st.text_input("Enter access token:", key="token_input")
     if st.button("Unlock"):
@@ -43,8 +43,8 @@ if not api_key:
 from generator import Generator, get_usage_log, UsageLog
 from retriever import Retriever, load_documents
 
-st.set_page_config(page_title="DeployHub Support Bot", page_icon="🚀", layout="wide")
-st.title("🚀 DeployHub Support Bot")
+st.set_page_config(page_title="DeployHub Support Bot", layout="wide")
+st.title("DeployHub Support Bot")
 
 
 @st.cache_resource
@@ -70,11 +70,11 @@ def get_kb_summary():
 
 
 def seed_demo_data():
-    from generator import _usage_log
+    from generator import _usage_log, INPUT_COST_PER_1M, OUTPUT_COST_PER_1M
     from datetime import datetime, timezone
     if not _usage_log:
         sample = [
-            ("How much does Pro cost?", "$29/month for the Pro plan [pricing.md].", 487, 42, ["pricing.md"]),
+            ("How much does Pro cost?", "29/month for the Pro plan [pricing.md].", 487, 42, ["pricing.md"]),
             ("What ports does the app use?", "DeployHub exposes port 8080 by default [troubleshooting.md].", 512, 38, ["troubleshooting.md"]),
             ("How is data encrypted?", "AES-256 at rest, TLS 1.3 in transit [security.md].", 503, 55, ["security.md"]),
             ("What are the API rate limits?", "Free: 50/min, Pro: 200/min, Team: 500/min [api.md].", 498, 61, ["api.md"]),
@@ -84,7 +84,7 @@ def seed_demo_data():
             _usage_log.append(UsageLog(
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 query=q, answer=a, prompt_tokens=pt, completion_tokens=ct,
-                cost=pt * 0.10 / 1e6 + ct * 0.40 / 1e6,
+                cost=pt * INPUT_COST_PER_1M / 1e6 + ct * OUTPUT_COST_PER_1M / 1e6,
                 sources=srcs,
             ))
 
@@ -94,15 +94,15 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 EXAMPLE_QUERIES = [
-    ("💰", "How much does the Pro plan cost?"),
-    ("🚀", "How do I deploy my first app?"),
-    ("🔒", "How is my data encrypted?"),
-    ("🐛", "My app returns 502 Bad Gateway, what should I do?"),
-    ("🔑", "What are the API rate limits?"),
-    ("🌐", "How do I add a custom domain?"),
+    "How much does the Pro plan cost?",
+    "How do I deploy my first app?",
+    "How is my data encrypted?",
+    "My app returns 502 Bad Gateway, what should I do?",
+    "What are the API rate limits?",
+    "How do I add a custom domain?",
 ]
 
-tab_home, tab_chat, tab_debug = st.tabs(["🏠 Overview", "💬 Chat", "🔧 Debug"])
+tab_home, tab_chat, tab_debug = st.tabs(["Overview", "Chat", "Debug"])
 
 
 #Overview landing tab
@@ -113,8 +113,8 @@ with tab_home:
     )
 
     st.markdown("### What can I help with?")
-    for icon, q in EXAMPLE_QUERIES:
-        st.markdown(f"- {icon} {q}")
+    for q in EXAMPLE_QUERIES:
+        st.markdown(f"- {q}")
 
     st.markdown("---")
     st.markdown("### Knowledge Base")
@@ -130,7 +130,7 @@ with tab_home:
                 st.markdown(f"- {h}")
 
     st.markdown("")
-    st.info("👆 Click the **Chat** tab to start asking questions.")
+    st.info("Click the **Chat** tab to start asking questions.")
 
 
 #Chat tab
@@ -138,7 +138,7 @@ with tab_chat:
     #input + clear button pinned to top
     bar = st.columns([1, 6])
     with bar[0]:
-        if st.button("🔄 New Chat", use_container_width=True):
+        if st.button("New Chat", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
     with bar[1]:
@@ -196,21 +196,21 @@ with tab_chat:
 #Debug tab
 with tab_debug:
     st.warning(
-        "⚠️ These are development and debugging tools. "
+        "These are development and debugging tools. "
         "They are not part of the normal user experience."
     )
 
     if is_demo_mode:
-        st.info("🎬 Demo Mode: Cost dashboard pre-populated with sample data.")
+        st.info("Demo Mode: Cost dashboard pre-populated with sample data.")
 
     st.caption(
-        "Backend: Gemini 2.0 Flash + sentence-transformers (all-MiniLM-L6-v2) + FAISS"
+        "Backend: Gemini 3.5 Flash + sentence-transformers (all-MiniLM-L6-v2) + FAISS"
     )
 
     st.markdown("---")
 
     #Evaluation
-    st.markdown("### 📊 Evaluation Suite")
+    st.markdown("### Evaluation Suite")
     st.markdown(
         "8 test cases checked on 3 rubric dimensions: "
         "**keyword match**, **source retrieval**, **hallucination guard**."
@@ -227,8 +227,8 @@ with tab_debug:
 
         st.subheader("Results")
         for r in results:
-            icon = "✅" if r.passed else "❌"
-            with st.expander(f"{icon} {r.test_id}: {r.query}"):
+            status = "PASS" if r.passed else "FAIL"
+            with st.expander(f"[{status}] {r.test_id}: {r.query}"):
                 st.markdown(f"**Answer:** {r.answer}")
                 st.markdown(f"**Keyword match:** {'PASS' if r.keyword_pass else 'FAIL'}")
                 st.markdown(f"**Source retrieval:** {'PASS' if r.source_pass else 'FAIL'}")
@@ -243,11 +243,11 @@ with tab_debug:
     st.markdown("---")
 
     #Cost dashboard
-    st.markdown("### 💰 Cost Dashboard")
+    st.markdown("### Cost Dashboard")
     st.markdown("Tracks token usage and simulated cost per query.")
     st.caption(
-        "Gemini 2.0 Flash free tier is $0. Costs shown use production pricing "
-        "($0.10/1M input, $0.40/1M output) for demonstration."
+        "Gemini 3.5 Flash free tier is \\$0. Costs shown use production pricing "
+        "(\\$0.30/1M input, \\$2.50/1M output) for demonstration."
     )
 
     if is_demo_mode:
